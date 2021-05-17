@@ -62,7 +62,12 @@ def setup_board_routes(app: Application, write_enabled: bool):
     r_chassis_mem = tree("1", data=get_chassis_members("smb"))
     r_chassis.addChild(r_chassis_mem)
     # /redfish/v1/Chasis/1/Power end point
-    r_power = tree("Power", data=get_chassis_power("psu1", "PSU1_IN_POWER", "0x05"))
+    #r_power = tree("Power", data=get_chassis_power("psu1", "PSU1_IN_POWER", "0x05"))
+    
+    # tuple(fru_name, snr_name, snr_num)
+    psu1 = ("psu1", "PSU1_IN_POWER", "0x05")
+    psu2 = ("psu2", "PSU2_IN_POWER", "0x0E")
+    r_power = tree("Power", data=get_chassis_power([psu1,psu2]))
     # /redfish/v1/Chasis/1/Thermal end point
     r_thermal = tree("Thermal", data=get_chassis_thermal("smb"))
     r_chassis_mem.addChildren([r_power, r_thermal])
