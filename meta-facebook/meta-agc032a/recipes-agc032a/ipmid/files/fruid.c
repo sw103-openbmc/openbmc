@@ -34,6 +34,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <syslog.h>
 #include <openbmc/log.h>
 #include <openbmc/pal.h>
 #include <openbmc/obmc-i2c.h>
@@ -61,8 +62,8 @@ static unsigned char g_fruid[AGC032A_FRU_NUM * AGC032A_FRUID_SIZE] = {0};
 
 static struct fruid_dev fruid_list[] = {
     {FRU_SMB, 6, 0x50, &g_fruid[0 * AGC032A_FRUID_SIZE], FRU_FB_FORMAT},
-    {FRU_PSU1, 0, 0x50, &g_fruid[1 * AGC032A_FRUID_SIZE], FRU_PSU_FORMAT},
-    {FRU_PSU2, 1, 0x50, &g_fruid[2 * AGC032A_FRUID_SIZE], FRU_PSU_FORMAT},
+    {FRU_PSU1, 0, 0x50, &g_fruid[1 * AGC032A_FRUID_SIZE], FRU_STD_FORMAT},
+    {FRU_PSU2, 1, 0x50, &g_fruid[2 * AGC032A_FRUID_SIZE], FRU_STD_FORMAT},
     {FRU_FAN1, 14, 0x50, &g_fruid[3 * AGC032A_FRUID_SIZE], FRU_FB_FORMAT},
     {FRU_FAN2, 15, 0x50, &g_fruid[4 * AGC032A_FRUID_SIZE], FRU_FB_FORMAT},
     {FRU_FAN3, 16, 0x50, &g_fruid[5 * AGC032A_FRUID_SIZE], FRU_FB_FORMAT},
@@ -108,7 +109,10 @@ typedef struct _fruid_common_hdr_t
 #define _APPEND_STR_VALUE(name)                                          \
   do                                                                     \
   {                                                                      \
-    if (strlen(name) < 1 || i + 1 + strlen(name) >= AGC032A_FRUID_SIZE) \
+    if (name == NULL) {                                                  \
+      break;                                                             \
+    }                                                                    \
+    if (strlen(name) < 1 || i + 1 + strlen(name) >= AGC032A_FRUID_SIZE)  \
     {                                                                    \
       break;                                                             \
     }                                                                    \
@@ -159,10 +163,10 @@ static void populate_fruid(unsigned char id)
     rc = fruid_parse(filename, &frupsu);
 
     chdr->ver = COMMON_HDR_VER;
+    chdr->prod_info_area_offset = PROD_INFO_AREA_OFFSET / LEN_BYTE_SIZE;
     chdr->cksum = chdr->ver + chdr->prod_info_area_offset;
     chdr->cksum = ZERO_CKSUM_CONST - chdr->cksum;
 
-    chdr->prod_info_area_offset = PROD_INFO_AREA_OFFSET / LEN_BYTE_SIZE;
     frumem[i++] = PROD_INFO_VER;
     frumem[i++] = 0x00;
     frumem[i++] = LANG_CODE_ENGLISH;
@@ -284,11 +288,55 @@ int plat_fruid_data(unsigned char payload_id, int fru_id, int offset, int count,
   return 0;
 }
 
+/*
+ * copy_eeprom_to_bin - copy the eeprom to binary file im /tmp directory
+ *
+ * @fru_id   : fru id
+ *
+ * returns 0 on successful copy
+ * returns non-zero on file operation errors
+ */
+int copy_eeprom_to_bin(int fru_id) {
+  char bin_file[64] = {0};
+  char name[16] = {0};
+  int bin = 0;
+  ssize_t bytes_wr = 0;
+  struct fruid_dev *frudev = get_frudev(fru_id);
+
+  if (!frudev)
+    return -1;
+
+  if (pal_get_fruid_name(fru_id, name) < 0) {
+    return -1;
+  }
+
+  sprintf(bin_file, "/tmp/fruid_%s.bin", name);
+  bin = open(bin_file, O_WRONLY | O_CREAT, 0644);
+  if (bin == -1) {
+    syslog(LOG_ERR, "%s: unable to create %s file: %s",
+	        __func__, bin_file, strerror(errno));
+    return errno;
+  }
+
+  bytes_wr = write(bin, frudev->mem, AGC032A_FRUID_SIZE);
+  if (bytes_wr != AGC032A_FRUID_SIZE) {
+    syslog(LOG_ERR, "%s: write to %s file failed: %s",
+          __func__, bin_file, strerror(errno));
+    close(bin);
+    return errno;
+  }
+
+  return 0;
+}
+
 int plat_fruid_init(void)
 {
+  int ret = 0;
   for (unsigned char id = 0; id < AGC032A_FRU_NUM; id++)
   {
     populate_fruid(fruid_list[id].id);
+    ret = copy_eeprom_to_bin(fruid_list[id].id);
   }
-  return 0;
+
+  return ret;
 }

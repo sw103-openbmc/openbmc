@@ -528,6 +528,56 @@ pal_get_fru_name(uint8_t fru, char *name) {
   return 0;
 }
 
+int
+pal_get_fruid_path(uint8_t fru, char *path) {
+  char fname[16] = {0};
+  int ret = 0;
+
+  switch(fru) {
+  case FRU_SMB:
+    strcpy(fname, "smb");
+    break;
+  case FRU_PSU1:
+    strcpy(fname, "psu1");
+    break;
+  case FRU_PSU2:
+    strcpy(fname, "psu2");
+    break;
+  case FRU_FAN1:
+    strcpy(fname, "fan1");
+    break;
+  case FRU_FAN2:
+    strcpy(fname, "fan2");
+    break;
+  case FRU_FAN3:
+    strcpy(fname, "fan3");
+    break;
+  case FRU_FAN4:
+    strcpy(fname, "fan4");
+    break;
+  case FRU_FAN5:
+    strcpy(fname, "fan5");
+    break;
+  case FRU_FAN6:
+    strcpy(fname, "fan6");
+    break;
+  default:
+    OBMC_ERROR(-1, "%s() unknown fruid %d", __func__, fru);
+    ret = PAL_ENOTSUP;
+  }
+
+  if ( ret != PAL_ENOTSUP ) {
+    sprintf(path, "/tmp/fruid_%s.bin", fname);
+  }
+
+  return ret;
+}
+
+int
+pal_get_fruid_name(uint8_t fru, char *name) {
+  return pal_get_fru_name(fru, name);
+}
+
 // Platform Abstraction Layer (PAL) Functions
 int
 pal_get_platform_name(char *name) {
