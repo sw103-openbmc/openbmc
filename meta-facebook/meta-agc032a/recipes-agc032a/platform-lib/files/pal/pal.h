@@ -209,7 +209,10 @@ extern "C" {
 #define FPGA_STS_CLR_BLUE 0x01
 #define FPGA_STS_CLR_YELLOW 0x05
 
-    extern const char pal_fru_list[];
+#define PWM_UNIT_MAX 255
+extern const char pal_fru_list[];
+extern size_t pal_pwm_cnt;
+extern size_t pal_tach_cnt;
 
 enum {
   BRD_TYPE_WEDGE400 = 0x00,

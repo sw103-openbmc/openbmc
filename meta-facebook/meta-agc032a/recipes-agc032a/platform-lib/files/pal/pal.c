@@ -156,7 +156,8 @@ size_t scm_all_sensor_cnt = sizeof(scm_all_sensor_list)/sizeof(uint8_t);
 size_t smb_sensor_cnt = sizeof(smb_sensor_list)/sizeof(uint8_t);
 size_t psu1_sensor_cnt = sizeof(psu1_sensor_list)/sizeof(uint8_t);
 size_t psu2_sensor_cnt = sizeof(psu2_sensor_list)/sizeof(uint8_t);
-
+size_t pal_pwm_cnt = 12;
+size_t pal_tach_cnt = 12;
 
 const char pal_fru_list[] = "all, smb, \
 psu1, psu2, fan1, fan2, fan3, fan4, fan5, fan6";
@@ -1564,14 +1565,18 @@ read_fan_rpm(const char *device, uint8_t fan, int *value) {
   char full_name[LARGEST_DEVICE_NAME * 2];
   char dir_name[LARGEST_DEVICE_NAME + 1];
   char device_name[12];
-  int tmp;
+  int tmp = 0;
+  int ret = 0;
 
   /* Get current working directory */
   if (get_current_dir(device, dir_name)) {
     return -1;
   }
 
-  snprintf(device_name, 12, "fan%d_input", fan);
+  ret = snprintf(device_name, sizeof(device_name), "fan%d_input", fan);
+  if (ret < 0) {
+    return -1;
+  }
   snprintf(full_name, sizeof(full_name), "%s/%s", dir_name, device_name);
   if (read_device(full_name, &tmp)) {
     return -1;
@@ -1584,12 +1589,109 @@ read_fan_rpm(const char *device, uint8_t fan, int *value) {
 
 int
 pal_get_fan_speed(uint8_t fan, int *rpm) {
-  if (fan >= MAX_NUM_FAN * 2) {
+  if (fan >= pal_pwm_cnt) {
     OBMC_INFO("get_fan_speed: invalid fan#:%d", fan);
     return -1;
   }
 
-  return read_fan_rpm(SMB_FCM_TACH_DEVICE, (fan + 1), rpm);
+  if (fan < 2) {
+    return read_fan_rpm(SMB_FAN_CONTROLLER1_DEVICE, (fan + 1), rpm);
+  } else if ( fan < 7) {
+    return read_fan_rpm(SMB_FAN_CONTROLLER2_DEVICE, (fan - 1), rpm);
+  }
+
+  return read_fan_rpm(SMB_FAN_CONTROLLER3_DEVICE, (fan - 6), rpm);
+}
+
+int
+pal_set_fan_speed(uint8_t fan, uint8_t pwm) {
+  char path[LARGEST_DEVICE_NAME * 2];
+  char device_name[5];
+  char pwm_val[4];
+  int  val = 0;
+  int  ret = 0;
+
+  if (fan >= pal_pwm_cnt) {
+    OBMC_INFO("set_fan_speed: invalid fan#:%d", fan);
+    return -1;
+  }
+
+  if (fan < 2) {
+    ret = snprintf(device_name, sizeof(device_name), "pwm%d", fan + 1);
+    if (ret < 0) {
+      return -1;
+    }
+    snprintf(path, sizeof(path), "%s/%s", SMB_FAN_CONTROLLER1_DEVICE, device_name);
+  } else if ( fan < 7) {
+    ret = snprintf(device_name, sizeof(device_name), "pwm%d", fan - 1);
+    if (ret < 0) {
+      return -1;
+    }
+    snprintf(path, sizeof(path), "%s/%s", SMB_FAN_CONTROLLER2_DEVICE, device_name);
+  } else {
+    ret = snprintf(device_name, sizeof(device_name), "pwm%d", fan - 6);
+    if (ret < 0) {
+      return -1;
+    }
+    snprintf(path, sizeof(path), "%s/%s", SMB_FAN_CONTROLLER3_DEVICE, device_name);
+  }
+
+  val = (pwm * PWM_UNIT_MAX) / 100;
+  snprintf(pwm_val, 4, "%d", val);
+
+  return write_device(path, pwm_val);
+}
+
+int pal_get_fan_name(uint8_t num, char *name)
+{
+  if (num > pal_tach_cnt) {
+    syslog(LOG_WARNING, "%s: invalid fan#:%d", __func__, num);
+    return -1;
+  }
+
+  snprintf(name, 32, "Fan %d",num);
+
+  return 0;
+}
+
+int pal_get_pwm_value(uint8_t fan, uint8_t *pwm)
+{
+  char path[LARGEST_DEVICE_NAME * 2] = {};
+  char device_name[5] = {};
+  int value = 0;
+  int ret = 0;
+
+  if (fan >= pal_pwm_cnt){
+    syslog(LOG_WARNING, "%s: invalid fan#:%d", __func__, fan);
+    return -1;
+  }
+
+  if (fan < 2) {
+    ret = snprintf(device_name, sizeof(device_name), "pwm%d", fan + 1);
+    if (ret < 0) {
+      return -1;
+    }
+    snprintf(path, sizeof(path), "%s/%s", SMB_FAN_CONTROLLER1_DEVICE, device_name);
+  } else if ( fan < 7) {
+    ret = snprintf(device_name, sizeof(device_name), "pwm%d", fan - 1);
+    if (ret < 0) {
+      return -1;
+    }
+    snprintf(path, sizeof(path), "%s/%s", SMB_FAN_CONTROLLER2_DEVICE, device_name);
+  } else {
+    ret = snprintf(device_name, sizeof(device_name), "pwm%d", fan - 6);
+    if (ret < 0) {
+      return -1;
+    }
+    snprintf(path, sizeof(path), "%s/%s", SMB_FAN_CONTROLLER3_DEVICE, device_name);
+  }
+
+  if (read_device(path, &value)) {
+    return -1;
+  }
+  *pwm = (100 * value) / PWM_UNIT_MAX;
+
+  return 0;
 }
 
 static int
