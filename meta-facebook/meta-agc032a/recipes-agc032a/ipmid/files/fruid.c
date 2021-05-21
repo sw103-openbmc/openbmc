@@ -310,7 +310,7 @@ int copy_eeprom_to_bin(int fru_id) {
     return -1;
   }
 
-  sprintf(bin_file, "/tmp/fruid_%s.bin", name);
+  snprintf(bin_file, sizeof(bin_file), "/tmp/fruid_%s.bin", name);
   bin = open(bin_file, O_WRONLY | O_CREAT, 0644);
   if (bin == -1) {
     syslog(LOG_ERR, "%s: unable to create %s file: %s",

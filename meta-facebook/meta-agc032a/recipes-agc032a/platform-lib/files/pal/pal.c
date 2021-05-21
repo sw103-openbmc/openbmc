@@ -535,31 +535,31 @@ pal_get_fruid_path(uint8_t fru, char *path) {
 
   switch(fru) {
   case FRU_SMB:
-    strcpy(fname, "smb");
+    strncpy(fname, "smb", strlen("smb") + 1);
     break;
   case FRU_PSU1:
-    strcpy(fname, "psu1");
+    strncpy(fname, "psu1", strlen("psu1") + 1);
     break;
   case FRU_PSU2:
-    strcpy(fname, "psu2");
+    strncpy(fname, "psu2", strlen("psu2") + 1);
     break;
   case FRU_FAN1:
-    strcpy(fname, "fan1");
+    strncpy(fname, "fan1", strlen("fan1") + 1);
     break;
   case FRU_FAN2:
-    strcpy(fname, "fan2");
+    strncpy(fname, "fan2", strlen("fan2") + 1);
     break;
   case FRU_FAN3:
-    strcpy(fname, "fan3");
+    strncpy(fname, "fan3", strlen("fan3") + 1);
     break;
   case FRU_FAN4:
-    strcpy(fname, "fan4");
+    strncpy(fname, "fan4", strlen("fan4") + 1);
     break;
   case FRU_FAN5:
-    strcpy(fname, "fan5");
+    strncpy(fname, "fan5", strlen("fan5") + 1);
     break;
   case FRU_FAN6:
-    strcpy(fname, "fan6");
+    strncpy(fname, "fan6", strlen("fan6") + 1);
     break;
   default:
     OBMC_ERROR(-1, "%s() unknown fruid %d", __func__, fru);
@@ -567,7 +567,7 @@ pal_get_fruid_path(uint8_t fru, char *path) {
   }
 
   if ( ret != PAL_ENOTSUP ) {
-    sprintf(path, "/tmp/fruid_%s.bin", fname);
+    snprintf(path, LARGEST_DEVICE_NAME,"/tmp/fruid_%s.bin", fname);
   }
 
   return ret;
