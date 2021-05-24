@@ -82,9 +82,20 @@ def setup_board_routes(app: Application, write_enabled: bool):
     r_ethernet = tree("EthernetInterfaces", data=get_manager_ethernet())
     # /redfish/v1/Managers/1/NetworkProtocol end point
     r_network = tree("NetworkProtocol", data=get_manager_network())
-    r_managers_mem.addChildren([r_ethernet, r_network])
+    # /redfish/v1/Managers/1/LogService end point
+    agc032a = ['all', 'sys', 'smb', 'psu1', 'psu2', 
+               'fan1', 'fan2', 'fan3', 'fan4', 'fan5', 'fan6']
+    r_log = tree("LogServices", data=get_manager_logservice(agc032a))
+    r_managers_mem.addChildren([r_ethernet, r_network, r_log])
+
     # /redfish/v1/Managers/1/EthernetInterfaces/1 end point
     r_ethernet_mem = tree("1", data=get_ethernet_members())
     r_ethernet.addChild(r_ethernet_mem)
+    # /redfish/v1/Managers/1/LogService/psu1 end point
+    log_mem = []
+    for item in agc032a:
+        mem = tree(str(item), data=get_logservice_members(str(item)))
+        log_mem.append(mem)
+    r_log.addChildren(log_mem)
 
     r_redfish.setup(app, write_enabled)
