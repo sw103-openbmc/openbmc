@@ -349,7 +349,8 @@ def get_log_entries(fru_id, max):
                 break
 
             entry_body = OrderedDict([
-                ("@odata.id",  f"/redfish/v1/Managers/BMC/LogServices/Log/Entries/{index}"),
+                ("@odata.id",
+                 f"/redfish/v1/Managers/1/LogServices/{fru_id}/Entries/{index}"),
                 ("@odata.type",  "#LogEntry.v1_8_0.LogEntry"),
                 ("Id", str(index)),
                 ("Name",  f"{fru_name} ({app_name})"),
