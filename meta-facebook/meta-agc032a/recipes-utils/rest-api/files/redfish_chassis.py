@@ -164,7 +164,9 @@ def get_chassis_thermal(fru_name):
                 ("@odata.id", odata_id_content),
                 ("MemberId", str(fan_count)),
                 ("Name", "BaseBoard System Fan " + str(fan_count + 1)),
-                ("Status", OrderedDict([('State', state), ('Health', health)]))
+                ("Status", OrderedDict([('State', state), ('Health', health)])),
+                ("Reading", float(key['value'])),
+                ("ReadingUnits", "RPM")
                 ])
 
                 if 'thresholds' in key:
@@ -172,6 +174,30 @@ def get_chassis_thermal(fru_name):
                     for i in range(len(thr_name)):
                         if thr_type[i] in s_thresholds:
                             result[thr_name[i]] = float(s_thresholds[thr_type[i]])
+
+                fan_fru = int(fan_count / 2 + 1)
+                cmd = "/usr/local/bin/fruid-util fan" + str(fan_fru)
+                data = Popen(cmd, shell=True, stdout=PIPE).stdout.read()
+                data = data.decode('utf-8', 'ignore')
+                sdata = data.split("\n")
+                for line in sdata:
+                    # skip lines with --- or startin with FRU
+                    if line.startswith("FRU"):
+                        continue
+                    if line.startswith("-----"):
+                        continue
+
+                    kv = line.split(":", 1)
+                    if len(kv) < 2:
+                        continue
+
+                    if "Manufacturer" in line:
+                        result["Manufacturer"] = kv[1].strip()
+                    if "Serial" in line:
+                        result["SerialNumber"] = kv[1].strip()
+                    if "Part Number" in line:
+                        result["PartNumber"] = kv[1].strip()
+
                 fan_count += 1
                 fan_sensors.append(result)
                 redundancy_result = OrderedDict([('@odata.id', odata_id_content)])
