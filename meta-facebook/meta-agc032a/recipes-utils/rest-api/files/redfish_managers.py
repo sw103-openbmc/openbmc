@@ -268,7 +268,7 @@ def get_manager_network():
         print(error)
     return node(body)
 
-
+# /redfish/v1/Managers/1/LogService
 def get_manager_logservice(list):
     body = {}
     mem_list = []
@@ -291,21 +291,18 @@ def get_manager_logservice(list):
         print(error)
     return node(body)
 
-
+# /redfish/v1/Managers/1/LogService/psu1
 def get_logservice_members(id):
     body = {}
-    max_entry = 1000
-    entries = []
 
     # OverWritePolicy: ["Unknown", "WrapsWhenFull", "NeverOverWrites"]
     try:
-        entries = get_log_entries(id, max_entry)
         body = {
             "@odata.id": f"/redfish/v1/Managers/1/LogServices/{id}",
             "@odata.type": "#LogService.v1_2_0.LogService",
             "Id": str(id),
             "Name": "System Log Service",
-            "MaxNumberOfRecords": str(max_entry),
+            "MaxNumberOfRecords": 1000,
             "OverWritePolicy": "Unknown",
             "DateTime": "",
             "DateTimeLocalOffset": "",
@@ -320,9 +317,6 @@ def get_logservice_members(id):
             },
             "Entries": {
                 "@odata.id": f"/redfish/v1/Managers/1/LogServices/{id}/Entries",
-                "@odata.type": "#LogEntryCollection.LogEntryCollection",
-                "Members@odata.count": len(entries),
-                "Members": entries
             }
         }
     except Exception as error:
@@ -330,38 +324,80 @@ def get_logservice_members(id):
 
     return node(body)
 
-
-def get_log_entries(fru_id, max):
-    result = []
+# /redfish/v1/Managers/1/LogService/fru/Entries
+def get_log_entries(id):
+    max_entry = 5
+    mem_list = []
 
     try:
-        logs = get_node_logs(str(fru_id)).getInformation()
+        logs = get_node_logs(str(id)).getInformation()
         entries = logs["Logs"]
-        
-        for entry in entries:
-            app_name = entry['APP_NAME']
-            fru_id = entry['FRU#']
-            fru_name = entry['FRU_NAME']
-            msg = entry['MESSAGE']
-            create = entry['TIME_STAMP']
-            index = entries.index(entry)+1
-            if index > max:
-                break
+        exist_entry = len(entries)
 
-            entry_body = OrderedDict([
-                ("@odata.id",
-                 f"/redfish/v1/Managers/1/LogServices/{fru_id}/Entries/{index}"),
-                ("@odata.type",  "#LogEntry.v1_8_0.LogEntry"),
-                ("Id", str(index)),
-                ("Name",  f"{fru_name} ({app_name})"),
-                ("Created",  str(create)),
-                ("Message",  str(msg)),
-                ("Severity", ""),
-                ("EntryType", "Event")
-            ])
-            result.append(entry_body)
+        if exist_entry < 1:
+            max_entry = 0
+        else:
+            max_entry = min(exist_entry, max_entry)
+
+        if max_entry != 0:    
+            for index in range(max_entry):
+                mem = get_log_entries_member(str(id), index, entries)
+                mem_list.append(mem)
+
+        body = {
+            "@odata.id": f"/redfish/v1/Managers/1/LogServices/{id}/Entries",
+            "@odata.type": "#LogEntryCollection.LogEntryCollection",
+            "Name": "Log Service Collection",
+            "Description": "Collection of Logs for this System",
+            "Members@odata.count": max_entry,
+            "Members": mem_list
+        }
+    except Exception as error:
+        print(error)
+
+    return node(body)
+
+
+def get_log_entries_member(fru, index, entries):
+    body = {}
+    list_len = len(entries)
+    rev_index = (list_len - 1) - index 
+    try:
+        app_name = entries[rev_index]['APP_NAME']
+        fru_id = entries[rev_index]['FRU#']
+        fru_name = entries[rev_index]['FRU_NAME']
+        msg = entries[rev_index]['MESSAGE']
+        create = entries[rev_index]['TIME_STAMP']
+        
+        body = OrderedDict([
+            ("@odata.id",
+             f"/redfish/v1/Managers/1/LogServices/{fru}/Entries/{index+1}"),
+            ("@odata.type",  "#LogEntry.v1_8_0.LogEntry"),
+            ("Id", index+1),
+            ("Name",  f"{fru_name} ({app_name})"),
+            ("Created",  str(create)),
+            ("Message",  str(msg)),
+            ("EntryType", "Event")
+        ])
 
     except Exception as error:
         print(error)
 
-    return result
+    return body
+
+
+# /redfish/v1/Managers/1/LogService/fru/Actions
+def get_log_actions(id):
+    body = {}
+
+    try:
+        body = {
+            "#LogService.ClearLog": {
+                "target": f"/redfish/v1/Managers/1/LogServices/{id}/Actions/LogService.ClearLog"
+            }
+        }
+        
+    except Exception as error:
+        print(error)
+
+    return node(body)
