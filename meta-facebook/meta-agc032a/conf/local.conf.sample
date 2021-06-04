@@ -6,5 +6,4 @@
 MACHINE ??= "agc032a"
 
 # OpenBMC distro settings
-# DISTRO ?= "openbmc-fb"
 DISTRO ?= "openbmc-delta"
