@@ -2,6 +2,7 @@
 
 require recipes-core/images/fbobmc-image-meta.inc
 require agc032a-image-layout.inc
+
 require recipes-core/images/fb-openbmc-image.bb
 
 # Include modules in rootfs
