@@ -1,7 +1,7 @@
 require u-boot-common.inc
 
 PV = "d2019.04"
-SRCBRANCH = "openbmc/helium/d2019.04"
+SRCBRANCH = "openbmc/helium/delta"
 SRC_URI = "git://github.com/sw103-openbmc/openbmc-uboot.git;branch=${SRCBRANCH};protocol=https"
 
 SRC_URI += "file://fw_env.config \
